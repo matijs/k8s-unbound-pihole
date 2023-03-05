@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unbound-config
+data:
+  unbound.conf: |
+    server:
+      # location of the trust anchor file that enables DNSSEC
+      auto-trust-anchor-file: "/var/lib/unbound/root.key"
+      # send minimal amount of information to upstream servers to enhance privacy
+      qname-minimisation: yes
+      # the interface that is used to connect to the network (this will listen to all interfaces)
+      interface: 0.0.0.0
+
+    remote-control:
+        # allows controling unbound using "unbound-control"
+        control-enable: yes
+
+  entrypoint.sh: |
+    #!/bin/sh
+
+    for i in server control; do
+            if [ ! -f /var/run/unbound/unbound_$i.key ] ||
+                    [ ! -f /var/run/unbound/unbound_$i.pem ]; then
+                            unbound-control-setup && break
+            fi
+    done
+
+    unbound-anchor -a /var/run/unbound/root.key
+    chown -R unbound:unbound /var/run/unbound
+
+    exec unbound -dp
